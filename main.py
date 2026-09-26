@@ -28,6 +28,7 @@ import cv2
 
 from config import (
     CAMERA_INDEX,
+    FR_RECOGNIZE_COOLDOWN,
     GRACE_PERIOD_SEC,
     STATE_AWAY,
     STATE_PRESENT,
@@ -35,6 +36,7 @@ from config import (
 )
 from detector import detect_face, load_detector
 from hud import draw_hud, fmt_duration
+from recognizer import FaceRecognizer
 
 
 def main() -> None:
@@ -45,6 +47,9 @@ def main() -> None:
 
     # ── Load face detector ─────────────────────────────────────────
     detector, mode = load_detector()
+
+    # ── Initialise face recogniser ─────────────────────────────────
+    recogniser = FaceRecognizer()
 
     # ── Open webcam ────────────────────────────────────────────────
     cap = cv2.VideoCapture(CAMERA_INDEX)
@@ -58,6 +63,11 @@ def main() -> None:
     last_face_time     = None            # Monotonic timestamp of last detection
     total_present_secs = 0.0             # Cumulative time spent in PRESENT
     last_tick          = time.monotonic()
+
+    # Recogniser throttle: do not run predict every single frame
+    last_recog_time  = 0.0               # Monotonic timestamp of last recognition
+    known_name       = None              # Last recognised name
+    known_confidence = None              # Last confidence value
 
     try:
         while True:
@@ -77,6 +87,21 @@ def main() -> None:
 
             if face_found:
                 last_face_time = now   # record last-seen timestamp
+
+            # ── Face recognition (throttled) ───────────────────────
+            if face_found and (now - last_recog_time) >= FR_RECOGNIZE_COOLDOWN:
+                x, y, w, h = face_box
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                face_roi = gray[y : y + h, x : x + w]
+                if face_roi.size > 0:
+                    name, conf = recogniser.identify(face_roi)
+                    known_name       = name
+                    known_confidence = conf
+                last_recog_time = now
+
+            elif not face_found:
+                known_name       = None
+                known_confidence = None
 
             # ── State transitions ──────────────────────────────────
             time_since_face = (
@@ -109,7 +134,7 @@ def main() -> None:
 
             # ── Render & display ───────────────────────────────────
             draw_hud(frame, state, session_secs, total_present_secs,
-                     face_box, grace_remaining)
+                     face_box, grace_remaining, known_name, known_confidence)
             cv2.imshow(WINDOW_NAME, frame)
 
             # ── Quit on 'q' ────────────────────────────────────────

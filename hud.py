@@ -9,7 +9,7 @@ import cv2
 
 from config import (
     COLOR_AWAY, COLOR_BG_DARK, COLOR_PRESENT, COLOR_TEXT_MAIN,
-    STATE_PRESENT,
+    COLOR_UNKNOWN, SHOW_NAME_OVERLAY, STATE_PRESENT,
 )
 
 
@@ -36,18 +36,21 @@ def draw_hud(
     total_present_secs: float,
     face_box,
     grace_remaining: float,
+    known_name: str | None = None,
+    known_confidence: float | None = None,
 ) -> None:
     """
     Render the full HUD overlay onto *frame* in-place.
 
     Draws
     -----
-    - Face bounding box with label & total presence badge
+    - Face bounding box with label, recognition name & total presence badge
     - Real-time wall clock at top-right corner
     - Semi-transparent status panel at the bottom
     - Status badge (PRESENT / AWAY)
     - Session timer and cumulative presence time
     - Grace period countdown (when applicable)
+    - Recognised employee name & confidence (when available)
     """
     fh, fw = frame.shape[:2]
     color  = COLOR_PRESENT if state == STATE_PRESENT else COLOR_AWAY
@@ -61,7 +64,10 @@ def draw_hud(
         cv2.rectangle(frame, (x, y), (x + bw, y + bh), color, 2)
 
         # Label above the box
-        lbl_text = "Face detected"
+        if SHOW_NAME_OVERLAY and known_name:
+            lbl_text = f"{known_name} ({known_confidence})" if known_confidence else known_name
+        else:
+            lbl_text = "Face detected"
         (lw, lh), _ = cv2.getTextSize(lbl_text, cv2.FONT_HERSHEY_DUPLEX, 0.52, 1)
         lbl_y = max(y - 8, lh + 8)
         lbl_x = max(6, min(fw - lw - 6, x))
