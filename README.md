@@ -4,7 +4,8 @@
 > Mendeteksi kehadiran wajah, mengukur **total waktu kehadiran**, dan menampilkan status **PRESENT / AWAY** dengan *grace period* — dilengkapi HUD interaktif di layar.
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
-![OpenCV](https://img.shields.io/badge/OpenCV-4.8+-5C3EE8?logo=opencv&logoColor=white)
+![OpenCV](https://img.shields.io/badge/OpenCV-4.9+-5C3EE8?logo=opencv&logoColor=white)
+![Face Recognition](https://img.shields.io/badge/Face%20Recognition-LBPH-4CAF50?logo=google&logoColor=white)
 ![DNN](https://img.shields.io/badge/DNN-Face%20Detector-4CAF50?logo=google&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow?logo=opensource&logoColor=white)
 
@@ -25,7 +26,7 @@ Program ini cocok untuk:
 
 ## ✨ Fitur
 
-### ✅ Deteksi Wajah Real-time
+### ✅ Deteksi Wajah & Identifikasi Wajah (Face Recognition)
 
 | Fitur | Keterangan |
 |-------|------------|
@@ -33,7 +34,9 @@ Program ini cocok untuk:
 | **Haar Cascade Fallback** | Otomatis aktif jika model DNN belum ter-download |
 | **Auto-Download Model** | Model (~10 MB) di-download otomatis saat pertama kali dijalankan |
 | **Confidence Threshold** | Hanya mendeteksi wajah dengan confidence ≥ 65% |
-| **Bounding Box + Label** | Menggambar kotak wajah + label "Face detected" |
+| **Face Recognition (LBPH)** | Identifikasi **siapa** yang hadir — bukan hanya "ada/tidak ada" |
+| **Registrasi Wajah Baru** | Tekan tombol **`R`** untuk daftarkan karyawan baru (capture 50 gambar + train otomatis) |
+| **Trained Model** | Model LBPH disimpan di `known_faces/encodings/` — tetap ada walau program ditutup |
 
 ### ✅ State Machine PRESENT / AWAY
 
@@ -85,6 +88,7 @@ Program ini cocok untuk:
 | **[OpenCV](https://opencv.org/)** | Computer Vision: akses kamera, DNN inference, rendering HUD |
 | **[OpenCV DNN](https://docs.opencv.org/4.x/d6/d0f/group__dnn__module.html)** | ResNet-SSD face detector (model Caffe) |
 | **[Haar Cascade](https://docs.opencv.org/4.x/db/d28/tutorial_table_of_content_obj_det.html)** | Fallback face detector bawaan OpenCV |
+| **[LBPH Face Recognizer](https://docs.opencv.org/4.x/da/d60/tutorial_face_main.html)** | Identifikasi wajah — training & prediksi real-time |
 
 ---
 
@@ -96,9 +100,17 @@ employee-presence-idle-monitor/
 ├── config.py            # Semua konstanta & konfigurasi
 ├── detector.py          # Face detector (DNN + Haar fallback)
 ├── hud.py               # HUD overlay (rendering & tampilan)
+├── recognizer.py        # Face recognition (LBPH) — registrasi, training, prediksi
+├── logger.py            # CSV logging untuk presence session
 ├── run.bat              # Script batch Windows
+├── requirements.txt     # Dependencies Python
 ├── deploy.prototxt      # Arsitektur model Caffe SSD
 ├── res10_300x300_ssd_iter_140000.caffemodel  # Model AI (10.6 MB)
+├── known_faces/         # Data face recognition
+│   ├── students.csv    # Mapping ID → Nama karyawan
+│   ├── images/         # Foto training per karyawan
+│   └── encodings/      # Model LBPH (.yml) hasil training
+├── presence_log.csv    # Log kehadiran (auto-generated)
 └── .gitignore           # Exclude __pycache__, venv, dll.
 ```
 
@@ -110,6 +122,9 @@ employee-presence-idle-monitor/
 | `config.py` | Semua konfigurasi: threshold, path model, warna, grace period, dll. — ubah di sini tanpa sentuh file lain |
 | `detector.py` | Load & jalankan face detector: prioritas DNN (ResNet-SSD), fallback Haar Cascade |
 | `hud.py` | Menggambar overlay: bounding box wajah, badge status, timer, total presence, jam sistem, grace countdown |
+| `recognizer.py` | Face recognition LBPH — registrasi wajah baru, training model, identifikasi real-time |
+| `logger.py` | Mencatat setiap state change (PRESENT/AWAY) ke `presence_log.csv` |
+| `requirements.txt` | Daftar dependency Python — install dengan `pip install -r requirements.txt` |
 | `run.bat` | Script Windows untuk menjalankan program |
 | `deploy.prototxt` | File arsitektur Caffe (dibuat oleh OpenCV) — menunjukkan struktur model |
 | `res10_300x300_ssd_iter_140000.caffemodel` | Model Caffe SSD terlatih — berat ~10.6 MB |
@@ -128,10 +143,12 @@ cd employee-presence-idle-monitor
 ### 2. Install Dependencies
 
 ```bash
-pip install opencv-python
+pip install -r requirements.txt
 ```
 
-> Hanya membutuhkan **opencv-python** — library Computer Vision terpopuler.
+> Membutuhkan **opencv-python** + **opencv-contrib-python** (untuk LBPH face recognition) + **numpy**.
+>
+> Semua terdaftar di `requirements.txt` — cukup satu perintah.
 
 ### 3. Jalankan Program
 
@@ -152,6 +169,17 @@ run.bat
 | Tombol | Fungsi |
 |--------|--------|
 | **`Q`** | Keluar dari program |
+| **`R`** | Daftarkan wajah karyawan baru (masukkan nama di terminal, capture 50 gambar, train model otomatis) |
+
+### Cara Registrasi Wajah Baru
+
+1. Arahkan wajah ke kamera hingga bounding box muncul
+2. Tekan **`R`**
+3. Masukkan nama karyawan di jendela terminal
+4. Tunggu ~5 detik — program capture 50 gambar lalu train model
+5. Wajah dikenal → label bounding box berubah jadi **nama karyawan** 🎉
+
+> **Catatan:** Model LBPH disimpan di `known_faces/encodings/lbph_model.yml`. Jika program ditutup dan dibuka lagi, model tetap ada — kamu tidak perlu registrasi ulang.
 
 ---
 
