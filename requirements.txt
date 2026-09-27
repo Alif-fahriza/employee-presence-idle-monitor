@@ -1,0 +1,9 @@
+# Employee Presence & Idle-Time Monitor — Dependencies
+# Install: pip install -r requirements.txt
+#
+# NOTE: opencv-contrib-python includes the face module (LBPH recogniser).
+#       If you only install opencv-python, face recognition will fail.
+
+opencv-python>=4.9.0
+opencv-contrib-python>=4.9.0
+numpy>=1.24.0
